@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="light">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Post-it Notes MD3</title>
+
+  <!-- SEO Meta Tags -->
+  <meta name="description"
+    content="Um aplicativo de notas rápidas em formato de post-its com Material Design 3, tags de prioridade, prazos e lembretes. Roda offline como PWA.">
+  <meta name="theme-color" content="#6750A4">
+
+  <!-- Apple Web App Meta -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Post-its">
+
+  <!-- Web App Manifest -->
+  <link rel="manifest" href="manifest.json">
+  <link rel="shortcut icon" href="assets/icon-192.png" type="image/png">
+  <link rel="apple-touch-icon" href="assets/icon-192.png">
+
+  <!-- Google Fonts & Material Symbols (MD3 Icons) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700&family=Caveat:wght@400;700&display=swap"
+    rel="stylesheet">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
+    rel="stylesheet">
+
+  <!-- Custom Styles -->
+  <link rel="stylesheet" href="app.css">
+</head>
+
+<body>
+
+  <!-- Top App Bar | Barra Superior do App-->
+  <header class="top-app-bar" id="mainHeader">
+    <div class="top-app-bar__start">
+      <span class="material-symbols-outlined top-app-bar__logo-icon">description</span>
+      <h1 class="top-app-bar__title">Post-it Notes</h1>
+    </div>
+
+    <div class="top-app-bar__center">
+      <div class="search-bar" id="searchBarContainer">
+        <span class="material-symbols-outlined search-bar__icon">search</span>
+        <input type="text" id="searchInput" placeholder="Pesquisar notas ou tags..." aria-label="Pesquisar notas">
+        <button id="clearSearchBtn" class="icon-button search-bar__clear-btn" aria-label="Limpar pesquisa"
+          style="display: none;">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="top-app-bar__end">
+      <button id="themeToggleBtn" class="icon-button" aria-label="Alternar tema escuro/claro">
+        <span class="material-symbols-outlined" id="themeIcon">dark_mode</span>
+      </button>
+      <button id="manageTagsBtn" class="icon-button" aria-label="Gerenciar tags">
+        <span class="material-symbols-outlined">sell</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- PWA Install Banner (Hidden by default)| Banner de Instalação do PWA -->
+  <div id="installBanner" class="install-banner" style="display: none;">
+    <div class="install-banner__content">
+      <span class="material-symbols-outlined install-banner__icon">install_mobile</span>
+      <div class="install-banner__text">
+        <h3>Instalar Post-it Notes</h3>
+        <p>Adicione à tela de início para acessar offline rapidamente.</p>
+      </div>
+    </div>
+    <div class="install-banner__actions">
+      <button id="installCancelBtn" class="button button--text">Agora Não</button>
+      <button id="installConfirmBtn" class="button button--filled">Instalar</button>
+    </div>
+  </div>
+
+  <!-- Main Content Layout -->
+  <main class="main-layout">
+
+    <!-- Tag Quick Filters (Horizontal Carousel Scroll) -->
+    <section class="filters-section" aria-label="Filtro rápido por tags">
+      <div class="filters-container" id="filtersContainer">
+        <!-- Generates dynamically: "Todas", "Urgente", "Importante", etc. -->
+      </div>
+    </section>
+
+    <!-- Notes Grid Container -->
+    <section class="notes-section" aria-label="Suas notas">
+      <div class="notes-grid" id="notesGrid">
+        <!-- Generates dynamically, standard or tilted post-it styled cards -->
+        <div class="notes-empty-state" id="emptyState">
+          <span class="material-symbols-outlined empty-state-icon">note_alt</span>
+          <p>Nenhuma nota por aqui.</p>
+          <span class="empty-state-message">Toque no botão abaixo para criar sua primeira nota post-it!</span>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Floating Action Button (FAB) -->
+  <button id="fabAddNote" class="fab" aria-label="Criar nova nota">
+    <span class="material-symbols-outlined fab__icon">edit</span>
+    <span class="fab__label">Criar</span>
+  </button>
+
+  <!-- Note Dialog (Create & Edit Note Modal) -->
+  <div id="noteDialog" class="dialog-overlay" style="display: none;">
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dialogTitle">
+      <div class="dialog__header">
+        <h2 id="dialogTitle" class="dialog__title">Nova Nota</h2>
+        <button id="dialogCloseBtn" class="icon-button" aria-label="Fechar diálogo">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+
+      <div class="dialog__body">
+        <form id="noteForm" autocomplete="off">
+          <input type="hidden" id="noteIdInput">
+
+          <!-- Note Fields -->
+          <div class="text-field">
+            <input type="text" id="noteTitleInput" placeholder="Título da nota" required>
+            <label for="noteTitleInput">Título</label>
+          </div>
+
+          <div class="text-field text-field--textarea">
+            <textarea id="noteContentInput" placeholder="Escreva o conteúdo do post-it aqui..." required></textarea>
+            <label for="noteContentInput">Conteúdo</label>
+          </div>
+
+          <!-- Color Picker -->
+          <div class="color-picker-section">
+            <h4 class="section-subtitle">Cor do Post-it</h4>
+            <div class="color-options" id="colorOptionsContainer">
+              <!-- Rendered dynamically -->
+            </div>
+          </div>
+
+          <!-- Priority Tag Selector -->
+          <div class="tag-selector-section">
+            <h4 class="section-subtitle">Marcador (Tag)</h4>
+            <div class="tag-options" id="tagOptionsContainer">
+              <!-- Rendered dynamically -->
+            </div>
+          </div>
+
+          <!-- Due Date (Prazo) -->
+          <div class="date-selector-section">
+            <h4 class="section-subtitle">Definir Prazo (Opcional)</h4>
+            <div class="datetime-input-wrapper">
+              <span class="material-symbols-outlined input-icon">calendar_today</span>
+              <input type="datetime-local" id="noteDueDateInput" aria-label="Data e hora de vencimento">
+              <button type="button" id="clearDateBtn" class="icon-button" aria-label="Remover prazo"
+                style="display: none;">
+                <span class="material-symbols-outlined">clear</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Reminder Config (Only visible if Due Date is selected) -->
+          <div class="reminder-selector-section" id="reminderSelectorWrapper" style="display: none;">
+            <h4 class="section-subtitle">Lembrete de Antecedência</h4>
+            <div class="select-input-wrapper">
+              <span class="material-symbols-outlined input-icon">notifications_active</span>
+              <select id="noteReminderInput" aria-label="Lembrete de antecedência">
+                <option value="none">Nenhum lembrete</option>
+                <option value="0">No momento do prazo</option>
+                <option value="5">5 minutos antes</option>
+                <option value="15">15 minutos antes</option>
+                <option value="30">30 minutos antes</option>
+                <option value="60">1 hora antes</option>
+                <option value="180">3 horas antes</option>
+                <option value="1440">1 dia antes</option>
+              </select>
+            </div>
+          </div>
+
+        </form>
+      </div>
+
+      <div class="dialog__actions">
+        <button id="noteDeleteBtn" class="button button--text button--error" type="button" style="display: none;">
+          <span class="material-symbols-outlined button__icon">delete</span>
+          Excluir
+        </button>
+        <div class="dialog__actions-right">
+          <button id="noteCancelBtn" class="button button--text" type="button">Cancelar</button>
+          <button id="noteSaveBtn" class="button button--filled" type="submit" form="noteForm">Salvar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tag Manager Dialog (Modal) -->
+  <div id="tagsDialog" class="dialog-overlay" style="display: none;">
+    <div class="dialog dialog--medium" role="dialog" aria-modal="true" aria-labelledby="tagsDialogTitle">
+      <div class="dialog__header">
+        <h2 id="tagsDialogTitle" class="dialog__title">Gerenciar Tags</h2>
+        <button id="tagsDialogCloseBtn" class="icon-button" aria-label="Fechar diálogo">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+
+      <div class="dialog__body">
+
+        <!-- Add New Tag Form -->
+        <form id="addTagForm" class="add-tag-form" autocomplete="off">
+          <div class="add-tag-form__row">
+            <div class="text-field">
+              <input type="text" id="newTagNameInput" placeholder="Nome do novo marcador" required maxlength="15">
+              <label for="newTagNameInput">Novo Marcador</label>
+            </div>
+            <button class="button button--filled" type="submit">
+              <span class="material-symbols-outlined button__icon">add</span>
+              Criar
+            </button>
+          </div>
+
+          <div class="color-picker-section">
+            <h4 class="section-subtitle">Cor do Marcador</h4>
+            <div class="color-options color-options--tags" id="tagColorOptionsContainer">
+              <!-- Rendered dynamically -->
+            </div>
+          </div>
+        </form>
+
+        <hr class="dialog-divider">
+
+        <!-- Tags List -->
+        <h4 class="section-subtitle">Marcadores Existentes</h4>
+        <div class="tags-list" id="tagsListContainer">
+          <!-- Rendered dynamically -->
+        </div>
+
+      </div>
+
+      <div class="dialog__actions">
+        <button id="tagsCloseBtn" class="button button--filled">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Active In-app Reminder Dialog (Modal) -->
+  <div id="reminderDialog" class="dialog-overlay" style="display: none;">
+    <div class="dialog dialog--small" role="dialog" aria-modal="true" aria-labelledby="reminderTitle">
+      <div class="dialog__header">
+        <h2 id="reminderTitle" class="dialog__title text-error">
+          <span class="material-symbols-outlined dialog__title-icon">notifications_active</span>
+          Aviso de Prazo!
+        </h2>
+      </div>
+      <div class="dialog__body">
+        <p class="reminder-dialog-message">O prazo para a seguinte nota está se esgotando:</p>
+        <div class="reminder-note-preview" id="reminderNotePreview">
+          <!-- Rendered dynamically (looks like a mini post-it) -->
+        </div>
+      </div>
+      <div class="dialog__actions">
+        <button id="reminderDismissBtn" class="button button--text">Dispensar</button>
+        <button id="reminderOpenBtn" class="button button--filled">Abrir Nota</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast / Snackbar (Dynamic feedback messages) -->
+  <div id="snackbar" class="snackbar" role="alert" aria-live="assertive" style="display: none;">
+    <span id="snackbarMessage" class="snackbar__text">Nota salva com sucesso!</span>
+  </div>
+
+  <!-- Sound effect for reminders -->
+  <audio id="reminderSound" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-84.wav" preload="auto"
+    crossorigin="anonymous"></audio>
+
+  <!-- Application JS Logic -->
+  <script src="app.js"></script>
+</body>
+
+</html>

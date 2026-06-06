@@ -1006,30 +1006,64 @@ body {
 }
 
 /* ==========================================================================
-   MEDIA QUERIES (MOBILE OPTIMIZATIONS)
+   MEDIA QUERIES — SISTEMA RESPONSIVO COMPLETO
    ========================================================================== */
 
-@media (max-width: 768px) {
-  .top-app-bar {
-    grid-template-columns: 1fr auto;
-    height: auto;
-    padding: 12px 16px;
-    gap: 12px;
-  }
-  
-  .top-app-bar__center {
-    grid-column: 1 / span 2;
-    padding: 0;
-  }
-  
-  .search-bar {
-    max-width: 100%;
+/* ---------- TABLET (≤ 1024px) ---------- */
+@media (max-width: 1024px) {
+  .main-layout {
+    padding: 12px;
   }
 
   .notes-grid {
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    grid-auto-rows: minmax(220px, auto);
+    gap: 20px;
+  }
+}
+
+/* ---------- MOBILE LARGO (≤ 768px) ---------- */
+@media (max-width: 768px) {
+
+  /* --- Top App Bar: 2 linhas ---
+       Linha 1: Logo + Título | Botões de ação
+       Linha 2: Barra de pesquisa (largura total) */
+  .top-app-bar {
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto auto;
+    height: auto;
+    padding: 10px 12px;
+    gap: 8px;
+  }
+
+  .top-app-bar__start {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .top-app-bar__end {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: center;
+  }
+
+  .top-app-bar__center {
+    grid-column: 1 / span 2;
+    grid-row: 2;
+    padding: 0;
+    justify-content: stretch;
+  }
+
+  .search-bar {
+    max-width: 100%;
+    width: 100%;
+  }
+
+  /* --- Grid de Notas --- */
+  .notes-grid {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
     grid-auto-rows: minmax(180px, auto);
-    gap: 16px;
+    gap: 14px;
   }
 
   .note-card {
@@ -1038,6 +1072,7 @@ body {
 
   .note-card__title {
     font-size: 20px;
+    margin-bottom: 8px;
   }
 
   .note-card__content {
@@ -1045,22 +1080,139 @@ body {
     -webkit-line-clamp: 5;
   }
 
-  .dialog {
-    border-radius: 24px 24px 0 0;
-    max-height: 90vh;
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    animation: slideUpMobile var(--duration-medium) var(--easing-decelerate);
-  }
-  
-  @keyframes slideUpMobile {
-    from { transform: translateY(100%); }
-    to { transform: translateY(0); }
-  }
-
+  /* --- Dialogs: Bottom Sheet no mobile --- */
   .dialog-overlay {
     align-items: flex-end;
     padding: 0;
+  }
+
+  .dialog {
+    border-radius: 24px 24px 0 0;
+    max-height: 92vh;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    animation: slideUpMobile var(--duration-medium) var(--easing-decelerate);
+  }
+
+  .dialog--small {
+    max-width: 100%;
+  }
+
+  .dialog--medium {
+    max-width: 100%;
+  }
+
+  @keyframes slideUpMobile {
+    from { transform: translateY(100%); opacity: 0; }
+    to   { transform: translateY(0);    opacity: 1; }
+  }
+
+  .dialog__header {
+    padding: 20px 20px 12px 20px;
+  }
+
+  .dialog__body {
+    padding: 8px 20px 20px 20px;
+  }
+
+  .dialog__actions {
+    padding: 12px 20px 20px 20px;
+  }
+
+  /* --- Banner de Instalação PWA: empilha verticalmente --- */
+  .install-banner {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 14px 16px;
+    gap: 12px;
+  }
+
+  .install-banner__actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
+
+/* ---------- MOBILE ESTREITO (≤ 600px) ---------- */
+@media (max-width: 600px) {
+
+  .main-layout {
+    padding: 10px;
+    gap: 12px;
+  }
+
+  .top-app-bar__title {
+    font-size: 18px;
+  }
+
+  /* --- Grid de Notas: coluna única abaixo de 480px --- */
+  .notes-grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    grid-auto-rows: minmax(160px, auto);
+    gap: 12px;
+  }
+
+  /* --- Formulário de Nova Tag: empilha verticalmente --- */
+  .add-tag-form__row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .add-tag-form__row .button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Garante que o text-field não tenha margin inferior extra
+     quando estiver empilhado no formulário de tags */
+  .add-tag-form__row .text-field {
+    margin-bottom: 12px;
+  }
+
+  /* --- Snackbar: largura total no mobile --- */
+  .snackbar {
+    min-width: unset;
+    width: calc(100vw - 32px);
+    bottom: 16px;
+  }
+}
+
+/* ---------- MOBILE MUITO PEQUENO (≤ 480px) ---------- */
+@media (max-width: 480px) {
+
+  /* --- FAB: oculta o rótulo de texto, fica redondo --- */
+  .fab__label {
+    display: none;
+  }
+
+  .fab {
+    width: 56px;
+    border-radius: 16px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  /* --- Grid de notas: duas colunas fixas --- */
+  .notes-grid {
+    grid-template-columns: 1fr 1fr;
+    grid-auto-rows: minmax(150px, auto);
+    gap: 10px;
+  }
+
+  .note-card {
+    padding: 12px;
+  }
+
+  .note-card__title {
+    font-size: 18px;
+    margin-bottom: 6px;
+  }
+
+  .note-card__content {
+    font-size: 15px;
+    -webkit-line-clamp: 4;
   }
 }

@@ -45,8 +45,9 @@ const DEFAULT_TAGS = [
 // ESTADO DA APLICAÇÃO
 // ==========================================================================
 
-let notes = JSON.parse(localStorage.getItem('postit_notes')) || [];
-let tags = JSON.parse(localStorage.getItem('postit_tags')) || DEFAULT_TAGS;
+// Estado carregado de forma assíncrona via dbService (SQLite → fallback localStorage)
+let notes = [];
+let tags = DEFAULT_TAGS;
 let activeFilterTag = 'all';
 let searchQuery = '';
 
@@ -118,13 +119,21 @@ const snackbarMessage = document.getElementById('snackbarMessage');
 // INICIALIZAÇÃO DA APLICAÇÃO
 // ==========================================================================
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   initTheme();
-  renderFilters();
-  renderNotes();
   setupEventListeners();
   initPWA();
-  
+
+  // Carrega dados do banco (SQLite via API, ou localStorage como fallback)
+  notes = await dbService.loadNotes();
+  tags = await dbService.loadTags();
+
+  // Garante que as tags padrão existam se o banco estiver vazio
+  if (tags.length === 0) tags = [...DEFAULT_TAGS];
+
+  renderFilters();
+  renderNotes();
+
   // Inicia o monitor de lembretes (roda a cada 15 segundos)
   setInterval(checkReminders, 15000);
   // Executa uma verificação imediata para prazos vencidos enquanto o app estava fechado
@@ -568,7 +577,7 @@ function clearDueDate() {
 
 async function saveNote(e) {
   e.preventDefault();
-  
+
   const id = noteIdInput.value;
   const title = noteTitleInput.value.trim();
   const content = noteContentInput.value.trim();
@@ -586,11 +595,10 @@ async function saveNote(e) {
     // Modo Edição: atualiza nota existente
     const index = notes.findIndex(n => n.id === id);
     if (index !== -1) {
-      // Se a data de vencimento ou antecedência mudou, reseta o estado de lembrete disparado
       const oldNote = notes[index];
       const reminderChanged = oldNote.dueDate !== dueDate || oldNote.reminderMinutes !== reminderMinutes;
-      
-      notes[index] = {
+
+      const updatedNote = {
         ...oldNote,
         title,
         content,
@@ -600,6 +608,9 @@ async function saveNote(e) {
         reminderMinutes,
         reminderTriggered: reminderChanged ? false : oldNote.reminderTriggered
       };
+
+      notes[index] = updatedNote;
+      await dbService.saveNote(updatedNote, false);
       showSnackbar('Nota atualizada com sucesso!');
     }
   } else {
@@ -615,21 +626,21 @@ async function saveNote(e) {
       reminderTriggered: false
     };
     notes.push(newNote);
+    await dbService.saveNote(newNote, true);
     showSnackbar('Nota criada com sucesso!');
   }
 
-  localStorage.setItem('postit_notes', JSON.stringify(notes));
   closeNoteDialog();
   renderNotes();
 }
 
-function deleteNote() {
+async function deleteNote() {
   const id = noteIdInput.value;
   if (!id) return;
-  
+
   if (confirm('Tem certeza de que deseja excluir este Post-it?')) {
     notes = notes.filter(n => n.id !== id);
-    localStorage.setItem('postit_notes', JSON.stringify(notes));
+    await dbService.deleteNote(id);
     closeNoteDialog();
     renderNotes();
     showSnackbar('Post-it excluído.');
@@ -670,15 +681,15 @@ function renderTagColorOptions() {
 }
 
 // Cria uma nova tag
-function addNewTag(e) {
+async function addNewTag(e) {
   e.preventDefault();
-  
+
   const name = newTagNameInput.value.trim();
   const color = currentNewTagColor;
-  
+
   if (!name) return;
 
-  // Verifica duplicados
+  // Verifica duplicados localmente
   const exists = tags.some(t => t.name.toLowerCase() === name.toLowerCase());
   if (exists) {
     alert('Já existe um marcador com esse nome.');
@@ -691,16 +702,22 @@ function addNewTag(e) {
     color
   };
 
+  const result = await dbService.saveTag(newTag);
+
+  if (!result.success && result.error === 'duplicate') {
+    alert('Já existe um marcador com esse nome.');
+    return;
+  }
+
   tags.push(newTag);
-  localStorage.setItem('postit_tags', JSON.stringify(tags));
-  
+
   newTagNameInput.value = '';
   newTagNameInput.focus();
-  
+
   // Reseta cor selecionada para o primeiro item
   currentNewTagColor = TAG_COLORS[0];
   renderTagColorOptions();
-  
+
   renderTagsList();
   renderFilters(); // Atualiza os filtros do app
   showSnackbar(`Marcador "${name}" criado!`);
@@ -741,24 +758,20 @@ function renderTagsList() {
 }
 
 // Deleta uma tag
-window.deleteTag = function(tagId) {
+window.deleteTag = async function(tagId) {
   const tagToDelete = tags.find(t => t.id === tagId);
   if (!tagToDelete) return;
-  
+
   if (confirm(`Tem certeza de que deseja excluir o marcador "${tagToDelete.name}"? As notas associadas a ele não serão apagadas, mas perderão a etiqueta.`)) {
-    // Remove do array de tags
+    // Remove do array local de tags
     tags = tags.filter(t => t.id !== tagId);
-    localStorage.setItem('postit_tags', JSON.stringify(tags));
-    
-    // Atualiza notas que usavam essa tag para ficarem sem tag
-    notes = notes.map(n => {
-      if (n.tagId === tagId) {
-        return { ...n, tagId: 'none' };
-      }
-      return n;
-    });
-    localStorage.setItem('postit_notes', JSON.stringify(notes));
-    
+
+    // Atualiza notas locais que usavam essa tag (a FK no banco cuida disso automaticamente)
+    notes = notes.map(n => n.tagId === tagId ? { ...n, tagId: 'none' } : n);
+
+    // Persiste a exclusão no banco (FK ON DELETE SET NULL cuida das notas no servidor)
+    await dbService.deleteTag(tagId);
+
     // Se o filtro ativo era a tag deletada, volta para 'Todas'
     if (activeFilterTag === tagId) {
       activeFilterTag = 'all';
@@ -797,7 +810,8 @@ function checkReminders() {
   });
 
   if (stateChanged) {
-    localStorage.setItem('postit_notes', JSON.stringify(notes));
+    // Persiste cada nota cujo lembrete foi marcado como disparado
+    notes.filter(n => n.reminderTriggered).forEach(n => dbService.saveNote(n, false));
     renderNotes();
   }
 }
@@ -904,9 +918,9 @@ function checkPastDueRemindersOnStartup() {
   });
 
   if (stateChanged) {
-    localStorage.setItem('postit_notes', JSON.stringify(notes));
+    notes.filter(n => n.reminderTriggered).forEach(n => dbService.saveNote(n, false));
     renderNotes();
-    
+
     if (pastDueNotesCount > 0) {
       setTimeout(() => {
         showSnackbar(`Você tem ${pastDueNotesCount} prazo(s) vencido(s) pendente(s).`);

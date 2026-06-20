@@ -66,9 +66,9 @@ if (tagCount.count === 0) {
   );
 
   const seedTags = [
-    { id: 'tag-urgent',    name: 'Urgente',    color: '#FF8A80' },
+    { id: 'tag-urgent', name: 'Urgente', color: '#FF8A80' },
     { id: 'tag-important', name: 'Importante', color: '#FFD180' },
-    { id: 'tag-routine',   name: 'Rotina',     color: '#B9F6CA' }
+    { id: 'tag-routine', name: 'Rotina', color: '#B9F6CA' }
   ];
 
   const seedMany = db.transaction((tags) => {

@@ -18,8 +18,8 @@ const path = require('path');
 // Caminho do arquivo do banco de dados
 const DB_PATH = path.join(__dirname, 'postit.db');
 
-// Conecta (ou cria) o banco
-const db = new Database(DB_PATH);
+// Conecta (ou cria) o banco (imprime as queries SQL executadas no terminal)
+const db = new Database(DB_PATH, { verbose: console.log });
 
 // Habilita foreign keys no SQLite (desativado por padrão)
 db.pragma('journal_mode = WAL');

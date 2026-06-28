@@ -1,5 +1,5 @@
 {
-  "name": "NoteIt",
+  "name": "Post It Notes",
   "short_name": "NoteIt",
   "description": "Um aplicativo de notas rápidas estilo Post-it com design moderno Material Design 3.",
   "start_url": "./index.html",

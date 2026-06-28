@@ -1,12 +1,12 @@
-# 🗒️ NoteIt
+# 🗒️ Post It Notes
 
-> *Notes* de anotações + *Post-it* = **NoteIt** — um app de notas digitais que traz a praticidade e o charme dos post-its físicos para o ambiente web, com suporte a modo claro, modo escuro e funcionalidades PWA.
+> *Notes* de anotações + *Post-it* = **Post It Notes** — um app de notas digitais que traz a praticidade e o charme dos post-its físicos para o ambiente web, com suporte a modo claro, modo escuro e funcionalidades PWA.
 
 ---
 
 ## 🎨 Paleta de Cores
 
-As cores do NoteIt foram escolhidas para refletir os **post-its do mundo real**, combinando autenticidade com uma experiência visual sofisticada em ambos os temas.
+As cores do Post It Notes foram escolhidas para refletir os **post-its do mundo real**, combinando autenticidade com uma experiência visual sofisticada em ambos os temas.
 
 ### 🌞 Tema Claro
 
@@ -47,7 +47,7 @@ As cores dos cards foram inspiradas diretamente nos post-its físicos mais popul
 
 ## ✨ Funcionalidades CRUD
 
-O NoteIt implementa as 4 operações fundamentais de banco de dados (**Create, Read, Update, Delete**) para notas e marcadores (tags).
+O Post It Notes implementa as 4 operações fundamentais de banco de dados (**Create, Read, Update, Delete**) para notas e marcadores (tags).
 
 ---
 
@@ -156,7 +156,7 @@ O app estará disponível em: **http://localhost:3000**
 
 ## 🗄️ Banco de Dados
 
-O NoteIt usa **SQLite** via `better-sqlite3`. O arquivo do banco (`postit.db`) é criado automaticamente na pasta `server/` ao rodar o servidor pela primeira vez.
+O Post It Notes usa **SQLite** via `better-sqlite3`. O arquivo do banco (`postit.db`) é criado automaticamente na pasta `server/` ao rodar o servidor pela primeira vez.
 
 ### Tabelas
 

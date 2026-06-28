@@ -1,29 +1,51 @@
 /**
- * db-service.js — Camada de acesso a dados do Post-it Notes PWA
+ * db-service.js — Camada de acesso a dados do NoteIt PWA
  *
- * Abstrai todas as operações de persistência. O app.js não precisa
- * saber se os dados vêm da API REST (SQLite no servidor) ou do
- * localStorage (fallback offline).
- *
- * Estratégia:
- *   1. Tenta a API REST (http://localhost:3000/api/...)
- *   2. Se o servidor estiver offline, usa localStorage como fallback
- *      e sinaliza o status no console.
+ * Persistência 100% via localStorage.
+ * Funciona offline e em qualquer dispositivo, sem necessidade de servidor.
  */
 
-const API_BASE = 'http://localhost:3000/api';
+const STORAGE_KEYS = {
+  notes: 'noteit_notes',
+  tags: 'noteit_tags',
+};
 
-// Indicador de conectividade com o servidor (atualizado a cada operação)
-let _serverOnline = true;
+// Migração única: move dados das chaves antigas (postit_*) para as novas (noteit_*)
+(function _migrateOldData() {
+  const OLD_KEYS = { notes: 'postit_notes', tags: 'postit_tags' };
+  const migrated = localStorage.getItem('noteit_migrated_v1');
+  if (migrated) return;
 
-function _setServerStatus(online) {
-  if (_serverOnline !== online) {
-    _serverOnline = online;
-    if (online) {
-      console.info('[DB Service] ✅ Servidor reconectado — usando SQLite.');
-    } else {
-      console.warn('[DB Service] ⚠️ Servidor offline — usando localStorage como fallback.');
+  [['notes', OLD_KEYS.notes], ['tags', OLD_KEYS.tags]].forEach(([type, oldKey]) => {
+    const oldData = localStorage.getItem(oldKey);
+    if (oldData && !localStorage.getItem(STORAGE_KEYS[type])) {
+      localStorage.setItem(STORAGE_KEYS[type], oldData);
+      console.info(`[DB Service] Migração: ${oldKey} → ${STORAGE_KEYS[type]}`);
     }
+  });
+
+  localStorage.setItem('noteit_migrated_v1', '1');
+})();
+
+// ==========================================================================
+// UTILITÁRIOS INTERNOS
+// ==========================================================================
+
+function _readStorage(key) {
+  try {
+    return JSON.parse(localStorage.getItem(key)) || [];
+  } catch {
+    return [];
+  }
+}
+
+function _writeStorage(key, data) {
+  try {
+    localStorage.setItem(key, JSON.stringify(data));
+    return true;
+  } catch (err) {
+    console.error('[DB Service] Falha ao salvar em localStorage:', err);
+    return false;
   }
 }
 
@@ -32,20 +54,11 @@ function _setServerStatus(online) {
 // ==========================================================================
 
 /**
- * Carrega todas as notas do servidor (ou localStorage como fallback).
+ * Carrega todas as notas salvas.
  * @returns {Promise<Array>}
  */
 async function loadNotes() {
-  try {
-    const res = await fetch(`${API_BASE}/notes`);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const notes = await res.json();
-    _setServerStatus(true);
-    return notes;
-  } catch {
-    _setServerStatus(false);
-    return JSON.parse(localStorage.getItem('postit_notes')) || [];
-  }
+  return _readStorage(STORAGE_KEYS.notes);
 }
 
 /**
@@ -55,39 +68,19 @@ async function loadNotes() {
  * @returns {Promise<boolean>}
  */
 async function saveNote(note, isNew) {
-  // Atualiza localStorage sempre (garante fallback e consistência offline)
-  const localNotes = JSON.parse(localStorage.getItem('postit_notes')) || [];
+  const notes = _readStorage(STORAGE_KEYS.notes);
   if (isNew) {
-    localNotes.push(note);
+    notes.push(note);
   } else {
-    const idx = localNotes.findIndex(n => n.id === note.id);
-    if (idx !== -1) localNotes[idx] = note;
-  }
-  localStorage.setItem('postit_notes', JSON.stringify(localNotes));
-
-  // Tenta persistir no servidor
-  try {
-    const method = isNew ? 'POST' : 'PUT';
-    const url = isNew ? `${API_BASE}/notes` : `${API_BASE}/notes/${note.id}`;
-
-    const res = await fetch(url, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(note)
-    });
-
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.error || `HTTP ${res.status}`);
+    const idx = notes.findIndex(n => n.id === note.id);
+    if (idx !== -1) {
+      notes[idx] = note;
+    } else {
+      // Segurança: se não encontrar pelo id, adiciona como novo
+      notes.push(note);
     }
-
-    _setServerStatus(true);
-    return true;
-  } catch (err) {
-    _setServerStatus(false);
-    console.error('[DB Service] saveNote falhou:', err.message);
-    return false;
   }
+  return _writeStorage(STORAGE_KEYS.notes, notes);
 }
 
 /**
@@ -96,21 +89,8 @@ async function saveNote(note, isNew) {
  * @returns {Promise<boolean>}
  */
 async function deleteNote(id) {
-  // Remove do localStorage
-  const localNotes = JSON.parse(localStorage.getItem('postit_notes')) || [];
-  localStorage.setItem('postit_notes', JSON.stringify(localNotes.filter(n => n.id !== id)));
-
-  // Tenta remover no servidor
-  try {
-    const res = await fetch(`${API_BASE}/notes/${id}`, { method: 'DELETE' });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    _setServerStatus(true);
-    return true;
-  } catch (err) {
-    _setServerStatus(false);
-    console.error('[DB Service] deleteNote falhou:', err.message);
-    return false;
-  }
+  const notes = _readStorage(STORAGE_KEYS.notes);
+  return _writeStorage(STORAGE_KEYS.notes, notes.filter(n => n.id !== id));
 }
 
 // ==========================================================================
@@ -118,20 +98,11 @@ async function deleteNote(id) {
 // ==========================================================================
 
 /**
- * Carrega todas as tags do servidor (ou localStorage como fallback).
+ * Carrega todas as tags salvas.
  * @returns {Promise<Array>}
  */
 async function loadTags() {
-  try {
-    const res = await fetch(`${API_BASE}/tags`);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const tags = await res.json();
-    _setServerStatus(true);
-    return tags;
-  } catch {
-    _setServerStatus(false);
-    return JSON.parse(localStorage.getItem('postit_tags')) || [];
-  }
+  return _readStorage(STORAGE_KEYS.tags);
 }
 
 /**
@@ -140,61 +111,35 @@ async function loadTags() {
  * @returns {Promise<{success: boolean, error?: string}>}
  */
 async function saveTag(tag) {
-  // Atualiza localStorage
-  const localTags = JSON.parse(localStorage.getItem('postit_tags')) || [];
-  localTags.push(tag);
-  localStorage.setItem('postit_tags', JSON.stringify(localTags));
+  const tags = _readStorage(STORAGE_KEYS.tags);
 
-  // Tenta persistir no servidor
-  try {
-    const res = await fetch(`${API_BASE}/tags`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(tag)
-    });
-
-    if (res.status === 409) {
-      return { success: false, error: 'duplicate' };
-    }
-
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-    _setServerStatus(true);
-    return { success: true };
-  } catch (err) {
-    _setServerStatus(false);
-    console.error('[DB Service] saveTag falhou:', err.message);
-    return { success: false, error: err.message };
+  // Verifica duplicata pelo nome (case-insensitive)
+  const duplicate = tags.some(
+    t => t.name.trim().toLowerCase() === tag.name.trim().toLowerCase()
+  );
+  if (duplicate) {
+    return { success: false, error: 'duplicate' };
   }
+
+  tags.push(tag);
+  const ok = _writeStorage(STORAGE_KEYS.tags, tags);
+  return ok ? { success: true } : { success: false, error: 'storage_error' };
 }
 
 /**
  * Exclui uma tag pelo ID.
- * Notas associadas terão tagId = null via FK ON DELETE SET NULL.
+ * Notas associadas terão tagId = 'none'.
  * @param {string} id
  * @returns {Promise<boolean>}
  */
 async function deleteTag(id) {
-  // Remove do localStorage e atualiza notas associadas
-  const localTags = JSON.parse(localStorage.getItem('postit_tags')) || [];
-  localStorage.setItem('postit_tags', JSON.stringify(localTags.filter(t => t.id !== id)));
+  const tags = _readStorage(STORAGE_KEYS.tags);
+  const notes = _readStorage(STORAGE_KEYS.notes);
 
-  const localNotes = JSON.parse(localStorage.getItem('postit_notes')) || [];
-  localStorage.setItem('postit_notes', JSON.stringify(
-    localNotes.map(n => n.tagId === id ? { ...n, tagId: 'none' } : n)
-  ));
+  _writeStorage(STORAGE_KEYS.tags, tags.filter(t => t.id !== id));
+  _writeStorage(STORAGE_KEYS.notes, notes.map(n => n.tagId === id ? { ...n, tagId: 'none' } : n));
 
-  // Tenta remover no servidor
-  try {
-    const res = await fetch(`${API_BASE}/tags/${id}`, { method: 'DELETE' });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    _setServerStatus(true);
-    return true;
-  } catch (err) {
-    _setServerStatus(false);
-    console.error('[DB Service] deleteTag falhou:', err.message);
-    return false;
-  }
+  return true;
 }
 
 // Expõe as funções globalmente para uso no app.js
@@ -204,5 +149,5 @@ window.dbService = {
   deleteNote,
   loadTags,
   saveTag,
-  deleteTag
+  deleteTag,
 };

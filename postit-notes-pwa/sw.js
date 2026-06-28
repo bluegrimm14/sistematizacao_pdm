@@ -1,32 +1,38 @@
-const CACHE_NAME = 'postit-notes-v1';
+const CACHE_NAME = 'noteit-v2';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './app.css',
   './app.js',
+  './db-service.js',
   './manifest.json',
-  './assets/icon-192.png',
-  './assets/icon-512.png'
 ];
 
-// Instalação do Service Worker e Caching dos recursos estáticos
+// Instalação do Service Worker — cache dos recursos estáticos
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      console.log('[Service Worker] Caching app shell');
-      return cache.addAll(ASSETS_TO_CACHE);
+      console.log('[SW] Caching app shell');
+      // Usa addAll com tratamento individual para não falhar por ícones ausentes
+      return Promise.allSettled(
+        ASSETS_TO_CACHE.map(url =>
+          cache.add(url).catch(err =>
+            console.warn('[SW] Não foi possível cachear:', url, err)
+          )
+        )
+      );
     }).then(() => self.skipWaiting())
   );
 });
 
-// Ativação e limpeza de caches antigos
+// Ativação — remove caches antigos
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keyList) => {
       return Promise.all(
         keyList.map((key) => {
           if (key !== CACHE_NAME) {
-            console.log('[Service Worker] Removing old cache', key);
+            console.log('[SW] Removendo cache antigo:', key);
             return caches.delete(key);
           }
         })
@@ -35,10 +41,16 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Interceptação de requisições de rede
+// Interceptação de requisições
 self.addEventListener('fetch', (event) => {
-  // Evitar interceptar requisições que não sejam GET ou sejam de APIs externas/extensões
+  // Ignora requisições não-GET e de origens externas (ex: Google Fonts)
   if (event.request.method !== 'GET') return;
+
+  const url = new URL(event.request.url);
+  if (url.origin !== self.location.origin) {
+    // Para recursos externos, tenta rede direto sem cache
+    return;
+  }
 
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
@@ -46,10 +58,12 @@ self.addEventListener('fetch', (event) => {
         return cachedResponse;
       }
 
-      // Se não estiver no cache, busca na rede
       return fetch(event.request).then((networkResponse) => {
-        // Se a requisição for válida para cache local, salva
-        if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+        if (
+          networkResponse &&
+          networkResponse.status === 200 &&
+          networkResponse.type === 'basic'
+        ) {
           const responseToCache = networkResponse.clone();
           caches.open(CACHE_NAME).then((cache) => {
             cache.put(event.request, responseToCache);
@@ -57,8 +71,7 @@ self.addEventListener('fetch', (event) => {
         }
         return networkResponse;
       }).catch(() => {
-        // Fallback offline caso a rede falhe e o recurso não esteja no cache
-        console.log('[Service Worker] Offline fetch failed for:', event.request.url);
+        console.warn('[SW] Falha de rede para:', event.request.url);
       });
     })
   );

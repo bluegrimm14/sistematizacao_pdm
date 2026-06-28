@@ -1,5 +1,5 @@
-# 🗒️ Post It Notes
-
+# 🗒️ Post It Notes (NoteIt)
+t
 > *Notes* de anotações + *Post-it* = **Post It Notes** — um app de notas digitais que traz a praticidade e o charme dos post-its físicos para o ambiente web, com suporte a modo claro, modo escuro e funcionalidades PWA.
 
 ---

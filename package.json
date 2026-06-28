@@ -1,0 +1,18 @@
+{
+  "name": "postit-notes-pwa-server",
+  "version": "1.0.0",
+  "description": "Servidor backend para o Post-it Notes PWA com persistência SQLite",
+  "main": "server/server.js",
+  "scripts": {
+    "start": "node server/server.js",
+    "dev": "node server/server.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^9.4.3",
+    "cors": "^2.8.5",
+    "express": "^4.18.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

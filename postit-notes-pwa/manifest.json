@@ -1,6 +1,6 @@
 {
-  "name": "Post-it Notes MD3",
-  "short_name": "Post-its",
+  "name": "NoteIt",
+  "short_name": "NoteIt",
   "description": "Um aplicativo de notas rápidas estilo Post-it com design moderno Material Design 3.",
   "start_url": "./index.html",
   "display": "standalone",
